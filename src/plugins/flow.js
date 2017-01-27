@@ -367,14 +367,13 @@ pp.flowParseObjectType = function (allowStatic, allowExact) {
       isStatic = true;
     }
 
-    const variancePos = this.state.start;
     const variance = this.flowParseVariance();
 
     if (this.match(tt.bracketL)) {
       nodeStart.indexers.push(this.flowParseObjectTypeIndexer(node, isStatic, variance));
     } else if (this.match(tt.parenL) || this.isRelational("<")) {
       if (variance) {
-        this.unexpected(variancePos);
+        this.unexpected(variance.start);
       }
       nodeStart.callProperties.push(this.flowParseObjectTypeCallProperty(node, allowStatic));
     } else {
@@ -382,7 +381,7 @@ pp.flowParseObjectType = function (allowStatic, allowExact) {
       if (this.isRelational("<") || this.match(tt.parenL)) {
         // This is a method property
         if (variance) {
-          this.unexpected(variancePos);
+          this.unexpected(variance.start);
         }
         nodeStart.properties.push(this.flowParseObjectTypeMethod(startPos, startLoc, isStatic, propertyKey));
       } else {
@@ -782,12 +781,14 @@ pp.typeCastToParameter = function (node) {
 pp.flowParseVariance = function() {
   let variance = null;
   if (this.match(tt.plusMin)) {
+    variance = this.startNode();
     if (this.state.value === "+") {
-      variance = "plus";
+      variance.kind = "plus";
     } else if (this.state.value === "-") {
-      variance = "minus";
+      variance.kind = "minus";
     }
     this.next();
+    this.finishNode(variance, "Variance");
   }
   return variance;
 };
@@ -1036,7 +1037,6 @@ export default function (instance) {
   // parse class property type annotations
   instance.extend("parseClassProperty", function (inner) {
     return function (node) {
-      delete node.variancePos;
       if (this.match(tt.colon)) {
         node.typeAnnotation = this.flowParseTypeAnnotation();
       }
@@ -1055,10 +1055,9 @@ export default function (instance) {
   instance.extend("parseClassMethod", function () {
     return function (classBody, method, isGenerator, isAsync) {
       if (method.variance) {
-        this.unexpected(method.variancePos);
+        this.unexpected(method.variance.start);
       }
       delete method.variance;
-      delete method.variancePos;
       if (this.isRelational("<")) {
         method.typeParameters = this.flowParseTypeParameterDeclaration();
       }
@@ -1093,11 +1092,9 @@ export default function (instance) {
 
   instance.extend("parsePropertyName", function (inner) {
     return function (node) {
-      const variancePos = this.state.start;
       const variance = this.flowParseVariance();
       const key = inner.call(this, node);
       node.variance = variance;
-      node.variancePos = variancePos;
       return key;
     };
   });
@@ -1106,10 +1103,9 @@ export default function (instance) {
   instance.extend("parseObjPropValue", function (inner) {
     return function (prop) {
       if (prop.variance) {
-        this.unexpected(prop.variancePos);
+        this.unexpected(prop.variance.start);
       }
       delete prop.variance;
-      delete prop.variancePos;
 
       let typeParameters;
 
