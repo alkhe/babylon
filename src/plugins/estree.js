@@ -35,6 +35,7 @@ pp.directiveToStmt = function (directive) {
   expression.raw = directiveLiteral.extra.raw;
 
   stmt.expression = this.finishNodeAt(expression, "Literal", directiveLiteral.end, directiveLiteral.loc.end);
+  stmt.directive = directiveLiteral.extra.raw.slice(1, -1);
 
   return this.finishNodeAt(stmt, "ExpressionStatement", directive.end, directive.loc.end);
 };
